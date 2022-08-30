@@ -7,6 +7,7 @@ import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -14,11 +15,19 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 public class SeleniumController {
 
     private String URL = "https://cse.inhatc.ac.kr/cse/2206/subview.do?enc=Zm5jdDF8QEB8JTJGYmJzJTJGY3NlJTJGMTA3JTJGYXJ0Y2xMaXN0LmRvJTNG";
+    private String Login_URL = "https://portal.inhatc.ac.kr/user/login.face";
+
+    @Value("${inhatc.user_id}")
+    private String user_id;
+
+    @Value("${inhatc.user_pwd}")
+    private String user_pwd;
 
     @GetMapping("")
     public String selenium() {
@@ -58,6 +67,67 @@ public class SeleniumController {
 
                 WebElement url = content.findElement(By.cssSelector("td.td-subject > a"));
                 result += "공지 url : " + url.getAttribute("href") + "<br />";
+            }
+        }
+
+        driver.quit();
+
+        System.out.println("####END####");
+
+        return result;
+
+    }
+
+
+    @GetMapping("/login")
+    public String login() throws InterruptedException {
+        String result = "";
+
+        System.out.println("####START####");
+
+        Path path = Paths.get("D:\\chromedriver_win32\\chromedriver.exe");
+        System.setProperty("webdriver.chrome.driver", path.toString());
+
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--disable-popup-blocking");   // 팝업 안띄움
+        options.addArguments("headless");   // 브라우저 안띄움
+        options.addArguments("--disable-gpu");  // gpu 비활성화
+        options.addArguments("--blink-settings=imagesEnabled=false");   // 이미지 다운 안받음
+
+        WebDriver driver = new ChromeDriver(options);
+        WebDriverWait webDriverWait = new WebDriverWait(driver, Duration.ofSeconds(10));    // 드라이버가 실행된 후 10초 기다림
+
+        driver.get(Login_URL);
+        driver.manage().timeouts().implicitlyWait(5, TimeUnit.SECONDS); // 페이지 전체가 로딩될때까지 기다림
+
+        WebElement webElement = driver.findElement(By.id("userId"));
+        webElement.sendKeys(user_id);
+
+        webElement = driver.findElement(By.id("password"));
+        webElement.sendKeys(user_pwd);
+
+        webElement = driver.findElement(By.className("btn_login"));
+        webElement.click();
+
+//        Thread.sleep(3000);
+
+        // 로그인 성공 후 포털에서 주간주요일정 가져오기
+        System.out.println(driver.getCurrentUrl());
+
+        webDriverWait.until(
+                ExpectedConditions.presenceOfElementLocated(By.cssSelector("#scListUl > li"))
+        );
+
+        List<WebElement> contents = driver.findElements(By.cssSelector("#scListUl > li"));
+        if(contents.size() > 0) {
+            for (WebElement content : contents) {
+                String date = content.findElement(By.cssSelector("span")).getText();
+                WebElement cont = content.findElement(By.cssSelector("a"));
+
+                result += "일정명 : " + cont.getAttribute("title") + "<br />";
+                result += "일정 : " + date + "<br />";    // 스크롤 다운 추가 필요
+                result += "url : " + cont.getAttribute("href") + "<br />";
+                result += "============================<br />";
             }
         }
 
