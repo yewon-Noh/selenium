@@ -1,6 +1,7 @@
 package com.example.selenium;
 
 import org.openqa.selenium.By;
+import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -20,7 +21,8 @@ import java.util.concurrent.TimeUnit;
 @RestController
 public class SeleniumController {
 
-    private String URL = "https://cse.inhatc.ac.kr/cse/2206/subview.do?enc=Zm5jdDF8QEB8JTJGYmJzJTJGY3NlJTJGMTA3JTJGYXJ0Y2xMaXN0LmRvJTNG";
+//    private String URL = "https://cse.inhatc.ac.kr/cse/2206/subview.do?enc=Zm5jdDF8QEB8JTJGYmJzJTJGY3NlJTJGMTA3JTJGYXJ0Y2xMaXN0LmRvJTNG";
+    private String URL = "https://www.inhatc.ac.kr/kr/461/subview.do";
     private String Login_URL = "https://portal.inhatc.ac.kr/user/login.face";
 
     @Value("${inhatc.user_id}")
@@ -54,7 +56,7 @@ public class SeleniumController {
 
         webDriverWait.until(
                 ExpectedConditions.presenceOfElementLocated(By.cssSelector("div._fnctWrap > form:nth-child(2) > div > table > tbody > tr"))
-                //cssSelector로 선택한 부분이 로딩횔때까지 기다림
+                //cssSelector로 선택한 부분이 로딩될때까지 기다림
         );
 
         List<WebElement> contents = driver.findElements(By.cssSelector("div._fnctWrap > form:nth-child(2) > div > table > tbody > tr"));
@@ -67,6 +69,95 @@ public class SeleniumController {
 
                 WebElement url = content.findElement(By.cssSelector("td.td-subject > a"));
                 result += "공지 url : " + url.getAttribute("href") + "<br />";
+            }
+        }
+
+        driver.quit();
+
+        System.out.println("####END####");
+
+        return result;
+
+    }
+
+    @GetMapping("/page")
+    public String seleniumPagging() {
+        String result = "";
+
+        System.out.println("####START####");
+
+        Path path = Paths.get("D:\\chromedriver_win32\\chromedriver.exe");
+        System.setProperty("webdriver.chrome.driver", path.toString());
+
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--disable-popup-blocking");   // 팝업 안띄움
+        options.addArguments("headless");   // 브라우저 안띄움
+        options.addArguments("--disable-gpu");  // gpu 비활성화
+        options.addArguments("--blink-settings=imagesEnabled=false");   // 이미지 다운 안받음
+
+        WebDriver driver = new ChromeDriver(options);
+
+        WebDriverWait webDriverWait = new WebDriverWait(driver, Duration.ofSeconds(10));    // 드라이버가 실행된 후 10초 기다림
+
+        driver.get(URL);
+
+//        driver.manage().timeouts().implicitlyWait(5, TimeUnit.SECONDS); // 페이지 전체가 로딩될때까지 기다림
+
+        webDriverWait.until(
+                ExpectedConditions.presenceOfElementLocated(By.cssSelector("div._fnctWrap > form:nth-child(2) > div > table > tbody > tr"))
+        );
+
+        // 정규식(숫자 아닌 모든 문자 변경)을 이용해 마지막 페이지 구함
+        String last = driver.findElement(By.cssSelector("div._fnctWrap > form:nth-child(3) > div > div > a._last")).getAttribute("href").replaceAll("[^0-9]", "");
+        // 현재 페이지 구함
+        String now = driver.findElement(By.cssSelector("div._fnctWrap > form:nth-child(3) > input#page")).getAttribute("value");
+
+        while (!last.equals(now)) {
+            System.out.println(">>>>>>>>>>>>>>>>>>>>>> " + now);
+            List<WebElement> contents = driver.findElements(By.cssSelector("div._fnctWrap > form:nth-child(2) > div > table > tbody > tr"));
+            if(contents.size() > 0) {
+                for (WebElement content : contents) {
+                    // 고정 공지는 크롤링 생략
+//                    if (!content.getAttribute("class").equals("notice")) {
+                        String title = content.findElement(By.cssSelector("td.td-subject > a > strong")).getText();
+                        String date = content.findElement(By.cssSelector("td.td-date")).getText();
+                        result += "공지 title / 작성일 : " + title + "/" + date + "<br />";
+
+                        WebElement url = content.findElement(By.cssSelector("td.td-subject > a"));
+                        result += "공지 url : " + url.getAttribute("href") + "<br />";
+//                    }
+                }
+            }
+
+            try {
+                WebElement element = driver.findElement(By.cssSelector("a._listNext"));
+                ((ChromeDriver) driver).executeScript("arguments[0].click();", element);
+                System.out.println(driver.getCurrentUrl());
+
+                webDriverWait.until(
+                        ExpectedConditions.presenceOfElementLocated(By.cssSelector("div._fnctWrap > form:nth-child(2) > div > table > tbody > tr"))
+                );
+                now = driver.findElement(By.cssSelector("div._fnctWrap > form:nth-child(3) > input#page")).getAttribute("value");
+            } catch (Exception e) {
+                now = driver.findElement(By.cssSelector("div._fnctWrap > form:nth-child(3) > input#page")).getAttribute("value");
+            }
+        }
+
+        if (last.equals(now)) {
+            System.out.println(">>>>>>>>>>>>>>>>>>>>>> " + now);
+            List<WebElement> contents = driver.findElements(By.cssSelector("div._fnctWrap > form:nth-child(2) > div > table > tbody > tr"));
+            if(contents.size() > 0) {
+                for (WebElement content : contents) {
+                    // 고정 공지는 크롤링 생략
+//                    if (!content.getAttribute("class").equals("notice")) {
+                    String title = content.findElement(By.cssSelector("td.td-subject > a > strong")).getText();
+                    String date = content.findElement(By.cssSelector("td.td-date")).getText();
+                    result += "공지 title / 작성일 : " + title + "/" + date + "<br />";
+
+                    WebElement url = content.findElement(By.cssSelector("td.td-subject > a"));
+                    result += "공지 url : " + url.getAttribute("href") + "<br />";
+//                    }
+                }
             }
         }
 
