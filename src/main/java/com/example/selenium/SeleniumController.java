@@ -229,4 +229,52 @@ public class SeleniumController {
         return result;
 
     }
+
+    /*
+     * 버튼 클릭 시 새탭으로 페이지가 열리는 경우
+     */
+    @GetMapping("/new_tab")
+    public String newTab() throws InterruptedException {
+        String result = "";
+
+        System.out.println("####START####");
+
+        Path path = Paths.get("D:\\chromedriver_win32\\chromedriver.exe");
+        System.setProperty("webdriver.chrome.driver", path.toString());
+
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--disable-popup-blocking");   // 팝업 안띄움
+        options.addArguments("headless");   // 브라우저 안띄움
+        options.addArguments("--disable-gpu");  // gpu 비활성화
+        options.addArguments("--blink-settings=imagesEnabled=false");   // 이미지 다운 안받음
+
+        WebDriver driver = new ChromeDriver(options);
+        WebDriverWait webDriverWait = new WebDriverWait(driver, Duration.ofSeconds(10));    // 드라이버가 실행된 후 10초 기다림
+
+        driver.get("https://www.saramin.co.kr/zf_user/company-search?searchWord=%ED%98%84%EB%8C%80%EB%AA%A8%EB%B9%84%EC%8A%A4");
+
+        webDriverWait.until(
+                ExpectedConditions.presenceOfElementLocated(By.cssSelector("div.wrap_company_search > div > div.list_company_search > div.wrap_list > div:nth-child(1) > a"))
+        );
+
+        WebElement webElement = driver.findElement(By.cssSelector("div.wrap_company_search > div > div.list_company_search > div.wrap_list > div:nth-child(1) > a"));
+        webElement.click();
+
+        String newTabHandle = driver.getWindowHandles().toArray()[1].toString();
+        driver.switchTo().window(newTabHandle);
+
+        webDriverWait.until(
+                ExpectedConditions.presenceOfElementLocated(By.cssSelector("div.header_company_view > div.title_company_view > h1 > span.name"))
+        );
+
+        String content = driver.findElement(By.cssSelector("div.header_company_view > div.title_company_view > h1 > span.name")).getText();
+        result = content;
+
+        driver.quit();
+
+        System.out.println("####END####");
+
+        return result;
+
+    }
 }
